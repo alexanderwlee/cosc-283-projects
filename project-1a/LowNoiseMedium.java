@@ -21,7 +21,7 @@ public class LowNoiseMedium extends Medium {
   // =========================================================================
 
   public LowNoiseMedium() {
-    random = new Random(5);
+    random = new Random();
   }
 
   // =========================================================================

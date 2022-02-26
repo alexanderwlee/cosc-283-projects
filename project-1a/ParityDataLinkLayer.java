@@ -15,10 +15,9 @@ import java.util.Queue;
  */
 public class ParityDataLinkLayer extends DataLinkLayer {
 
-  // The start tag, stop tag, parity tag, and the escape tag.
+  // The start tag, stop tag, and the escape tag.
   private final byte startTag = (byte) '{';
   private final byte stopTag = (byte) '}';
-  private final byte parityTag = (byte) '+';
   private final byte escapeTag = (byte) '\\';
 
   // The maximum size (in bytes) of smaller frames.
@@ -48,10 +47,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
       // If the current data byte is itself a metadata tag, then precede
       // it with an escape tag.
       byte currentByte = data[i];
-      if ((currentByte == startTag)
-          || (currentByte == stopTag)
-          || (currentByte == parityTag)
-          || (currentByte == escapeTag)) {
+      if ((currentByte == startTag) || (currentByte == stopTag) || (currentByte == escapeTag)) {
         framingData.add(escapeTag);
       }
 
@@ -63,7 +59,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
       // If we are at the end of the smaller frame.
       if ((i % maxFrameSize == maxFrameSize - 1) || (i == data.length - 1)) {
-        framingData.add(parityTag);
         framingData.add(parity);
         framingData.add(stopTag);
       }
@@ -111,7 +106,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
     // Try to extract data while waiting for an unescaped stop tag.
     Deque<Byte> extractedBytes = new LinkedList<Byte>();
     boolean stopTagFound = false;
-    byte actualParity = 0;
     while (!stopTagFound && i.hasNext()) {
 
       // Grab the next byte.  If it is...
@@ -127,30 +121,42 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         if (i.hasNext()) {
           current = i.next();
           extractedBytes.add(current);
-          actualParity ^= getByteParity(current);
         } else {
           // An escape was the last byte available, so this is not a
           // complete frame.
-          return null;
-        }
-      } else if (current == parityTag) {
-        if (i.hasNext()) {
-          byte expectedParity = i.next();
-          if (expectedParity != actualParity) {
-            cleanBufferUpTo(i); // TODO: are we doing the right thing here?
-            System.err.println("Error detected.");
-            return null;
+          if (debug) {
+            System.out.println("Escape was the last byte available");
           }
+          return null;
         }
       } else if (current == stopTag) {
         cleanBufferUpTo(i);
         stopTagFound = true;
+        byte expectedParity = extractedBytes.pollLast(); // TODO: what if null?
+        byte actualParity = 0;
+        for (byte b : extractedBytes) {
+          actualParity ^= getByteParity(b);
+        }
+        if (expectedParity != actualParity) {
+          byte[] extractedData = new byte[extractedBytes.size()];
+          int j = 0;
+          for (byte b : extractedBytes) {
+            extractedData[j] = b;
+            j++;
+          }
+          System.err.println("Error detected");
+          System.err.println("Corrupted data: " + new String(extractedData));
+          System.err.println("Not delivering data to host");
+          return null;
+        }
       } else if (current == startTag) {
         cleanBufferUpTo(i);
         extractedBytes = new LinkedList<Byte>();
+        if (debug) {
+          System.out.println("Current byte is start tag");
+        }
       } else {
         extractedBytes.add(current);
-        actualParity ^= getByteParity(current);
       }
     }
 
@@ -161,7 +167,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
     // Convert to the desired byte array.
     if (debug) {
-      System.out.println("DumbDataLinkLayer.processFrame(): Got whole frame!");
+      System.out.println("ParityDataLinkLayer.processFrame(): Got whole frame!");
     }
     byte[] extractedData = new byte[extractedBytes.size()];
     int j = 0;
@@ -170,7 +176,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
       extractedData[j] = i.next();
       if (debug) {
         System.out.printf(
-            "DumbDataLinkLayer.processFrame():\tbyte[%d] = %c\n", j, extractedData[j]);
+            "ParityDataLinkLayer.processFrame():\tbyte[%d] = %c\n", j, extractedData[j]);
       }
       j += 1;
     }

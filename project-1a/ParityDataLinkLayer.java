@@ -79,9 +79,11 @@ public class ParityDataLinkLayer extends DataLinkLayer {
   /**
    * Determine whether the received, buffered data constitutes a complete frame. If so, then remove
    * the framing metadata and return the original data. Note that any data preceding an escaped
-   * start tag is assumed to be part of a damaged frame, and is thus discarded.
+   * start tag is assumed to be part of a damaged frame, and is thus discarded. Also determine
+   * whether the data
    *
-   * @return If the buffer contains a complete frame, the extracted, original data; <code>null
+   * @return If the buffer contains a complete and uncorrupted frame, the extracted, original data;
+   *     <code>null
    *     </code> otherwise.
    */
   protected byte[] processFrame() {
@@ -112,7 +114,8 @@ public class ParityDataLinkLayer extends DataLinkLayer {
       //   (a) An escape tag: Skip over it and grab what follows as
       //                      literal data.
       //   (b) A stop tag:    Remove all processed bytes from the buffer and
-      //                      end extraction.
+      //                      end extraction. Also determine whether the extracted data is
+      //                      uncorrupted.
       //   (c) A start tag:   All that precedes is damaged, so remove it
       //                      from the buffer and restart extraction.
       //   (d) Otherwise:     Take it as literal data.

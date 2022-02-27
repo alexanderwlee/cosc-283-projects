@@ -72,7 +72,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
       framedData[j++] = i.next();
     }
 
-    System.out.println(new String(framedData));
     return framedData;
   }
 
@@ -80,7 +79,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
    * Determine whether the received, buffered data constitutes a complete frame. If so, then remove
    * the framing metadata and return the original data. Note that any data preceding an escaped
    * start tag is assumed to be part of a damaged frame, and is thus discarded. Also determine
-   * whether the data
+   * whether the data has been corrupted.
    *
    * @return If the buffer contains a complete and uncorrupted frame, the extracted, original data;
    *     <code>null
@@ -135,7 +134,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
       } else if (current == stopTag) {
         cleanBufferUpTo(i);
         stopTagFound = true;
-        byte expectedParity = extractedBytes.pollLast(); // TODO: what if null?
+        byte expectedParity = extractedBytes.removeLast();
         byte actualParity = 0;
         for (byte b : extractedBytes) {
           actualParity ^= getByteParity(b);

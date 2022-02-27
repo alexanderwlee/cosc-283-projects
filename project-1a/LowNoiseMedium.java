@@ -22,6 +22,9 @@ public class LowNoiseMedium extends Medium {
 
   public LowNoiseMedium() {
     random = new Random();
+    long seed = random.nextLong();
+    random.setSeed(seed);
+    System.out.println(seed);
   }
 
   // =========================================================================

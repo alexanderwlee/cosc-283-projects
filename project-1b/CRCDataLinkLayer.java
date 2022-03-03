@@ -11,11 +11,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-// TODO: edit comments to fit CRC.
-
 /**
  * A data link layer that uses start/stop tags and byte packing to frame the data, and that performs
- * error management.
+ * error management via a CRC.
  */
 public class CRCDataLinkLayer extends DataLinkLayer {
 
@@ -33,7 +31,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
   /**
    * Embed a raw sequence of bytes into multiple smaller frames with at most 8 bytes of data and a
-   * parity bit.
+   * CRC checksum.
    *
    * @param data The raw sequence of bytes to be framed.
    * @return A complete frame with multiple smaller frames.
@@ -42,13 +40,14 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
     Queue<Byte> framingData = new LinkedList<>();
 
-    List<Byte> message = new ArrayList<>();
+    // A transmission of only message/data bytes and checksum.
+    List<Byte> transmission = new ArrayList<>();
 
     for (int i = 0; i < data.length; i++) {
       // If we are at the start of the smaller frame.
       if (i % maxFrameSize == 0) {
         framingData.add(startTag);
-        message = new ArrayList<>();
+        transmission = new ArrayList<>();
       }
 
       // If the current data byte is itself a metadata tag, then precede
@@ -61,11 +60,14 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       // Add the data byte itself.
       framingData.add(currentByte);
 
-      message.add(currentByte);
+      // Add the data byte to the transmission.
+      transmission.add(currentByte);
 
       // If we are at the end of the smaller frame.
       if ((i % maxFrameSize == maxFrameSize - 1) || (i == data.length - 1)) {
-        byte checksum = getChecksum(message);
+        // Compute checksum.
+        byte checksum = getChecksum(transmission);
+        // In case the checksum is a tag.
         if (isByteTag(checksum)) {
           framingData.add(escapeTag);
         }
@@ -90,7 +92,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
    * Determine whether the received, buffered data constitutes a complete frame. If so, then remove
    * the framing metadata and return the original data. Note that any data preceding an escaped
    * start tag is assumed to be part of a damaged frame, and is thus discarded. Also determine
-   * whether the data has been corrupted.
+   * whether the data has been corrupted via a CRC.
    *
    * @return If the buffer contains a complete and uncorrupted frame, the extracted, original data;
    *     <code>null
@@ -118,7 +120,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     // Try to extract data while waiting for an unescaped stop tag.
     Deque<Byte> extractedBytes = new LinkedList<Byte>();
     boolean stopTagFound = false;
-    List<Byte> message = new ArrayList<>();
+    List<Byte> transmission = new ArrayList<>(); // Transmission of message/data bytes and checksum.
     while (!stopTagFound && i.hasNext()) {
 
       // Grab the next byte.  If it is...
@@ -126,7 +128,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       //                      literal data.
       //   (b) A stop tag:    Remove all processed bytes from the buffer and
       //                      end extraction. Also determine whether the extracted data is
-      //                      uncorrupted.
+      //                      uncorrupted via a CRC.
       //   (c) A start tag:   All that precedes is damaged, so remove it
       //                      from the buffer and restart extraction.
       //   (d) Otherwise:     Take it as literal data.
@@ -135,7 +137,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         if (i.hasNext()) {
           current = i.next();
           extractedBytes.add(current);
-          message.add(current);
+          transmission.add(current);
         } else {
           // An escape was the last byte available, so this is not a
           // complete frame.
@@ -147,8 +149,8 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       } else if (current == stopTag) {
         cleanBufferUpTo(i);
         stopTagFound = true;
-        extractedBytes.removeLast(); // remove checksum
-        byte remainder = getRemainder(message);
+        extractedBytes.removeLast(); // Remove checksum.
+        byte remainder = getRemainder(transmission);
         if (remainder != 0) {
           byte[] extractedData = new byte[extractedBytes.size()];
           int j = 0;
@@ -164,13 +166,13 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       } else if (current == startTag) {
         cleanBufferUpTo(i);
         extractedBytes = new LinkedList<Byte>();
-        message = new ArrayList<>();
+        transmission = new ArrayList<>();
         if (debug) {
           System.out.println("Current byte is start tag");
         }
       } else {
         extractedBytes.add(current);
-        message.add(current);
+        transmission.add(current);
       }
     }
 

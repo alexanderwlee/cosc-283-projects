@@ -210,9 +210,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
   private byte getRemainder(List<Byte> data) {
     int workingValue = 0;
-    for (int i = 0; i < data.size(); i++) {
+    for (byte b : data) {
       for (int j = DataLinkLayer.BITS_PER_BYTE - 1; j >= 0; j--) {
-        int bit = getBit(data.get(i), j);
+        int bit = getBit(b, j);
         workingValue = (workingValue << 1) | bit;
         if (getBit(workingValue, generatorSize - 1) == 1) {
           workingValue ^= generator;

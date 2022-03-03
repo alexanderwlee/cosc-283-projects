@@ -183,7 +183,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
     // Convert to the desired byte array.
     if (debug) {
-      System.out.println("ParityDataLinkLayer.processFrame(): Got whole frame!");
+      System.out.println("CRCDataLinkLayer.processFrame(): Got whole frame!");
     }
     byte[] extractedData = new byte[extractedBytes.size()];
     int j = 0;
@@ -191,8 +191,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     while (i.hasNext()) {
       extractedData[j] = i.next();
       if (debug) {
-        System.out.printf(
-            "ParityDataLinkLayer.processFrame():\tbyte[%d] = %c\n", j, extractedData[j]);
+        System.out.printf("CRCDataLinkLayer.processFrame():\tbyte[%d] = %c\n", j, extractedData[j]);
       }
       j += 1;
     }

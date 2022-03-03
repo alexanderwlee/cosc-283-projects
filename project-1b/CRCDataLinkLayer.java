@@ -4,9 +4,11 @@
  * @data February 2022
  */
 
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 // TODO: edit comments to fit CRC.
@@ -25,11 +27,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
   // The maximum size (in bytes) of smaller frames.
   private final int maxFrameSize = 8;
 
-  // The generator and it's size (in number of bits)
-  private final int generator = 0xA7; // CRC-8-Bluetooth
-  private final int generatorSize = 8;
-
-  private final int dataSize = DataLinkLayer.BITS_PER_BYTE + generatorSize;
+  // The generator and it's size (in number of bits).
+  private final int generator = 0x1d5; // CRC-8
+  private final int generatorSize = 9;
 
   /**
    * Embed a raw sequence of bytes into multiple smaller frames with at most 8 bytes of data and a
@@ -40,32 +40,35 @@ public class CRCDataLinkLayer extends DataLinkLayer {
    */
   protected byte[] createFrame(byte[] data) {
 
-    Queue<Byte> framingData = new LinkedList<Byte>();
+    Queue<Byte> framingData = new LinkedList<>();
 
-    long message = 0;
+    List<Byte> message = new ArrayList<>();
 
     for (int i = 0; i < data.length; i++) {
       // If we are at the start of the smaller frame.
       if (i % maxFrameSize == 0) {
         framingData.add(startTag);
-        message = 0;
+        message = new ArrayList<>();
       }
 
       // If the current data byte is itself a metadata tag, then precede
       // it with an escape tag.
       byte currentByte = data[i];
-      if ((currentByte == startTag) || (currentByte == stopTag) || (currentByte == escapeTag)) {
+      if (isByteTag(currentByte)) {
         framingData.add(escapeTag);
       }
 
       // Add the data byte itself.
       framingData.add(currentByte);
 
-      message = appendByteToMessage(message, currentByte);
+      message.add(currentByte);
 
       // If we are at the end of the smaller frame.
       if ((i % maxFrameSize == maxFrameSize - 1) || (i == data.length - 1)) {
         byte checksum = getChecksum(message);
+        if (isByteTag(checksum)) {
+          framingData.add(escapeTag);
+        }
         framingData.add(checksum);
         framingData.add(stopTag);
       }
@@ -79,6 +82,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       framedData[j++] = i.next();
     }
 
+    System.out.println(new String(framedData));
     return framedData;
   }
 
@@ -114,6 +118,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     // Try to extract data while waiting for an unescaped stop tag.
     Deque<Byte> extractedBytes = new LinkedList<Byte>();
     boolean stopTagFound = false;
+    List<Byte> message = new ArrayList<>();
     while (!stopTagFound && i.hasNext()) {
 
       // Grab the next byte.  If it is...
@@ -130,6 +135,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         if (i.hasNext()) {
           current = i.next();
           extractedBytes.add(current);
+          message.add(current);
         } else {
           // An escape was the last byte available, so this is not a
           // complete frame.
@@ -141,12 +147,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       } else if (current == stopTag) {
         cleanBufferUpTo(i);
         stopTagFound = true;
-        byte expectedParity = extractedBytes.removeLast();
-        byte actualParity = 0;
-        for (byte b : extractedBytes) {
-          actualParity ^= getByteParity(b);
-        }
-        if (expectedParity != actualParity) {
+        extractedBytes.removeLast(); // remove checksum
+        byte remainder = getRemainder(message);
+        if (remainder != 0) {
           byte[] extractedData = new byte[extractedBytes.size()];
           int j = 0;
           for (byte b : extractedBytes) {
@@ -161,11 +164,13 @@ public class CRCDataLinkLayer extends DataLinkLayer {
       } else if (current == startTag) {
         cleanBufferUpTo(i);
         extractedBytes = new LinkedList<Byte>();
+        message = new ArrayList<>();
         if (debug) {
           System.out.println("Current byte is start tag");
         }
       } else {
         extractedBytes.add(current);
+        message.add(current);
       }
     }
 
@@ -193,53 +198,32 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     return extractedData;
   }
 
-  private long appendByteToMessage(long message, byte b) {
-    return (message << DataLinkLayer.BITS_PER_BYTE) | b;
+  private boolean isByteTag(byte b) {
+    return (b == startTag) || (b == stopTag) || (b == escapeTag);
   }
 
-  private byte getChecksum(long message) {
-    long appendedMessage = appendZerosToMessage(message, generatorSize - 1);
-    byte remainder = getRemainder(appendedMessage);
+  private byte getChecksum(List<Byte> message) {
+    message.add((byte) 0); // append 8 bits (1 byte) of 0's
+    byte remainder = getRemainder(message);
     return remainder;
   }
 
-  private long appendZerosToMessage(long message, int numZeros) {
-    return message << numZeros;
-  }
-
-  private byte getRemainder(long data) {
+  private byte getRemainder(List<Byte> data) {
     int workingValue = 0;
-    for (int i = dataSize - 1; i >= 0; i--) {
-      byte bit = getBit(data, i);
-      workingValue = (workingValue << 1) | bit;
-      int leadingOnePos = getLeadingOnePos(workingValue);
-      if (leadingOnePos == generatorSize - 1) {
-        workingValue ^= generator;
+    for (int i = 0; i < data.size(); i++) {
+      for (int j = DataLinkLayer.BITS_PER_BYTE - 1; j >= 0; j--) {
+        int bit = getBit(data.get(i), j);
+        workingValue = (workingValue << 1) | bit;
+        if (getBit(workingValue, generatorSize - 1) == 1) {
+          workingValue ^= generator;
+        }
       }
     }
     return (byte) workingValue;
   }
 
-  private int getLeadingOnePos(int workingValue) {
-    for (int i = 31; i >= 0; i--) {
-      if (getBit(workingValue, i) == 1) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  private byte getBit(long data, int i) {
-    return (byte) ((data >> i) & 1);
-  }
-
-  private int getByteParity(byte currentByte) {
-    byte parity = 0;
-    for (int bitPos = 0; bitPos < DataLinkLayer.BITS_PER_BYTE; bitPos++) {
-      int currentBit = (currentByte >> bitPos) & 1;
-      parity ^= currentBit;
-    }
-    return parity;
+  private int getBit(int value, int pos) {
+    return (value >> pos) & 1;
   }
 
   private void cleanBufferUpTo(Iterator<Byte> end) {

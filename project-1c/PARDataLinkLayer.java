@@ -29,11 +29,18 @@ public class PARDataLinkLayer extends DataLinkLayer {
    */
   protected Queue<Byte> createFrame(Queue<Byte> data) {
 
+    Queue<Byte> framingData = new LinkedList<Byte>();
+
+    // If still waiting for acknowledgement,
+    if (waitingForAck) {
+      // return empty frame.
+      return framingData;
+    }
+
     // Calculate the parity.
     byte parity = calculateParity(data);
 
     // Begin with the start tag.
-    Queue<Byte> framingData = new LinkedList<Byte>();
     framingData.add(startTag);
 
     // Add each byte of original data.
@@ -41,7 +48,10 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
       // If the current data byte is itself a metadata tag, then precede
       // it with an escape tag.
-      if ((currentByte == startTag) || (currentByte == stopTag) || (currentByte == escapeTag)) {
+      if ((currentByte == startTag)
+          || (currentByte == stopTag)
+          || (currentByte == escapeTag)
+          || (currentByte == ackTag)) {
 
         framingData.add(escapeTag);
       }
@@ -49,6 +59,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
       // Add the data byte itself.
       framingData.add(currentByte);
     }
+
+    // Add frame number.
+    framingData.add(sendFrameNum);
 
     // Add the parity byte.
     framingData.add(parity);
@@ -135,6 +148,11 @@ public class PARDataLinkLayer extends DataLinkLayer {
       System.out.println("ParityDataLinkLayer.processFrame(): Got whole frame!");
     }
 
+    // If received an acknowledgement frame.
+    if (extractedBytes.size() == 1 && extractedBytes.peek() == ackTag) {
+      return extractedBytes;
+    }
+
     // The final byte inside the frame is the parity.  Compare it to a
     // recalculation.
     byte receivedParity = extractedBytes.remove(extractedBytes.size() - 1);
@@ -158,7 +176,11 @@ public class PARDataLinkLayer extends DataLinkLayer {
   protected void finishFrameSend(Queue<Byte> frame) {
 
     // COMPLETE ME WITH FLOW CONTROL
-
+    if (!waitingForAck) {
+      resendBuffer = frame;
+      waitingForAck = true;
+      sentTime = System.currentTimeMillis();
+    }
   } // finishFrameSend ()
   // =========================================================================
 
@@ -172,6 +194,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
   protected void finishFrameReceive(Queue<Byte> frame) {
 
     // COMPLETE ME WITH FLOW CONTROL
+    // TODO: figure out when to deliver frame to client.
 
     // Deliver frame to the client.
     byte[] deliverable = new byte[frame.size()];
@@ -179,7 +202,19 @@ public class PARDataLinkLayer extends DataLinkLayer {
       deliverable[i] = frame.remove();
     }
 
+    if (deliverable.length == 1 && deliverable[0] == ackTag) {
+      waitingForAck = false;
+      return;
+    }
+
     client.receive(deliverable);
+
+    // Create and send an acknowledgement.
+    Queue<Byte> ackFrame = new LinkedList<Byte>();
+    ackFrame.add(startTag);
+    ackFrame.add(ackTag);
+    ackFrame.add(endTag);
+    transmit(ackFrame);
   } // finishFrameReceive ()
   // =========================================================================
 
@@ -192,7 +227,13 @@ public class PARDataLinkLayer extends DataLinkLayer {
   protected void checkTimeout() {
 
     // COMPLETE ME WITH FLOW CONTROL
-
+    if (waitingForAck) {
+      // If reached timeout,
+      if (System.currentTimeMillis - sentTime > 5000) {
+        // resend.
+        transmit(resendBuffer);
+      }
+    }
   } // checkTimeout ()
   // =========================================================================
 
@@ -243,6 +284,24 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
   /** The escape tag. */
   private final byte escapeTag = (byte) '\\';
+
+  /** The acknowledgement tag. */
+  private final byte ackTag = (byte) '@';
+
+  /** The send frame number. */
+  private byte sendFrameNum = 0;
+
+  /** The receive frame number. */
+  private byte receiveFrameNum = 0;
+
+  /** Whether the layer is waiting for an acknowledgement of the frame. */
+  private boolean waitingForAck = false;
+
+  /** The time the layer sent the frame. */
+  private long sentTime;
+
+  /** The buffer of data that might need to be resent. */
+  private Queue<Byte> resendBuffer;
   // =========================================================================
 
   // =============================================================================

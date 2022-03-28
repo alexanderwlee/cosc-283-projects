@@ -213,7 +213,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
     Queue<Byte> ackFrame = new LinkedList<Byte>();
     ackFrame.add(startTag);
     ackFrame.add(ackTag);
-    ackFrame.add(endTag);
+    ackFrame.add(stopTag);
     transmit(ackFrame);
   } // finishFrameReceive ()
   // =========================================================================
@@ -229,7 +229,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
     // COMPLETE ME WITH FLOW CONTROL
     if (waitingForAck) {
       // If reached timeout,
-      if (System.currentTimeMillis - sentTime > 5000) {
+      if (System.currentTimeMillis() - sentTime > 5000) {
         // resend.
         transmit(resendBuffer);
       }

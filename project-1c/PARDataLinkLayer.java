@@ -29,9 +29,6 @@ public class PARDataLinkLayer extends DataLinkLayer {
    */
   protected Queue<Byte> createFrame(Queue<Byte> data) {
 
-    // Calculate the parity.
-    byte parity = calculateParity(data);
-
     // Begin with the start tag.
     Queue<Byte> framingData = new LinkedList<Byte>();
     framingData.add(startTag);
@@ -50,11 +47,15 @@ public class PARDataLinkLayer extends DataLinkLayer {
       framingData.add(currentByte);
     }
 
-    // Add the parity byte.
-    framingData.add(parity);
-
     // Add frame number.
     framingData.add(sendFrameNum);
+    data.add(sendFrameNum);
+
+    // Calculate the parity.
+    byte parity = calculateParity(data);
+
+    // Add the parity byte.
+    framingData.add(parity);
 
     // End with a stop tag.
     framingData.add(stopTag);
@@ -149,11 +150,6 @@ public class PARDataLinkLayer extends DataLinkLayer {
       return null;
     }
 
-    // TODO: handle index out of bounds
-
-    // Save actual received frame number.
-    actualReceivedFrameNum = extractedBytes.removeLast();
-
     // The final byte inside the frame is the parity.  Compare it to a
     // recalculation.
     byte receivedParity = extractedBytes.remove(extractedBytes.size() - 1);
@@ -162,6 +158,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
       System.out.printf("PARDataLinkLayer.processFrame():\tDamaged frame\n");
       return null;
     }
+
+    // Save actual received frame number.
+    actualReceivedFrameNum = extractedBytes.removeLast();
 
     return extractedBytes;
   } // processFrame ()
@@ -235,7 +234,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
       // Move to next frame number.
       expectedReceivedFrameNum = getNextFrameNum(expectedReceivedFrameNum);
     } else {
-      System.out.println(client + ": Actual received frame number not equal expected");
+      System.out.println(client + ": Received unexpected frame number");
     }
 
     // Create and send an acknowledgement.

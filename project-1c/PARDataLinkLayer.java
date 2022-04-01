@@ -36,7 +36,10 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
       // If the current data byte is itself a metadata tag, then precede
       // it with an escape tag.
-      if ((currentByte == startTag) || (currentByte == stopTag) || (currentByte == escapeTag)) {
+      if ((currentByte == startTag)
+          || (currentByte == stopTag)
+          || (currentByte == escapeTag)
+          || (currentByte == ackTag)) {
 
         framingData.add(escapeTag);
       }

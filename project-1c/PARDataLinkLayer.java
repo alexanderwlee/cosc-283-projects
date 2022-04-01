@@ -6,16 +6,14 @@ import java.util.LinkedList;
 import java.util.Queue;
 // =============================================================================
 
-// TODO: edit comments.
-
 // =============================================================================
 /**
  * @file PARDataLinkLayer.java
  * @author Alexander Lee (awlee22@amherst.edu)
  * @date March 2020
  *     <p>A data link layer that uses start/stop tags and byte packing to frame the data, and that
- *     performs error management with a parity bit. It employs no flow control; damaged frames are
- *     dropped.
+ *     performs error management with a parity bit. It employs no flow control via positive
+ *     acknowledgment with retransmission (i.e., stop-and-wait).
  */
 public class PARDataLinkLayer extends DataLinkLayer {
   // =============================================================================

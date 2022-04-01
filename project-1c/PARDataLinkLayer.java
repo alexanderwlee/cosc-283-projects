@@ -6,11 +6,13 @@ import java.util.LinkedList;
 import java.util.Queue;
 // =============================================================================
 
+// TODO: edit comments.
+
 // =============================================================================
 /**
  * @file PARDataLinkLayer.java
  * @author Alexander Lee (awlee22@amherst.edu)
- * @date February 2020
+ * @date March 2020
  *     <p>A data link layer that uses start/stop tags and byte packing to frame the data, and that
  *     performs error management with a parity bit. It employs no flow control; damaged frames are
  *     dropped.
@@ -133,7 +135,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
     }
 
     if (debug) {
-      System.out.println("ParityDataLinkLayer.processFrame(): Got whole frame!");
+      System.out.println("PARDataLinkLayer.processFrame(): Got whole frame!");
     }
 
     // If received an acknowledgement frame.
@@ -154,7 +156,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
     byte receivedParity = extractedBytes.remove(extractedBytes.size() - 1);
     byte calculatedParity = calculateParity(extractedBytes);
     if (receivedParity != calculatedParity) {
-      System.out.printf("ParityDataLinkLayer.processFrame():\tDamaged frame\n");
+      System.out.printf("PARDataLinkLayer.processFrame():\tDamaged frame\n");
       return null;
     }
 

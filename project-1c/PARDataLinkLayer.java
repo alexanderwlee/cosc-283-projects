@@ -50,11 +50,11 @@ public class PARDataLinkLayer extends DataLinkLayer {
       framingData.add(currentByte);
     }
 
-    // Add frame number.
-    framingData.add(sendFrameNum);
-
     // Add the parity byte.
     framingData.add(parity);
+
+    // Add frame number.
+    framingData.add(sendFrameNum);
 
     // End with a stop tag.
     framingData.add(stopTag);

@@ -142,7 +142,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
     // If received an acknowledgement frame.
     if (extractedBytes.size() == 1 && extractedBytes.peek() == ackTag) {
-      System.out.println(client + ": Acknowledgement received");
+      if (debug) {
+        System.out.println(client + ": Acknowledgement received");
+      }
       // Record layer is no long waiting for an acknowledgement.
       waitingForAck = false;
       // Move to next frame number.
@@ -208,7 +210,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
     waitingForAck = true;
     // Record the time.
     sentTime = System.currentTimeMillis();
-    System.out.println(client + ": Sending frame " + sendFrameNum);
+    if (debug) {
+      System.out.println(client + ": Sending frame " + sendFrameNum);
+    }
   } // finishFrameSend ()
   // =========================================================================
 
@@ -235,7 +239,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
       // Move to next frame number.
       expectedReceivedFrameNum = getNextFrameNum(expectedReceivedFrameNum);
     } else {
-      System.out.println(client + ": Received unexpected frame number");
+      if (debug) {
+        System.out.println(client + ": Received unexpected frame number");
+      }
     }
 
     // Create and send an acknowledgement.
@@ -244,7 +250,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
     ackFrame.add(ackTag);
     ackFrame.add(stopTag);
     transmit(ackFrame);
-    System.out.println(client + ": Acknowledgment sent");
+    if (debug) {
+      System.out.println(client + ": Acknowledgment sent");
+    }
   } // finishFrameReceive ()
   // =========================================================================
 
@@ -262,7 +270,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
       // If reached timeout.
       if (System.currentTimeMillis() - sentTime > 100) {
         // Resend.
-        System.out.println(client + ": Timeout...resending buffer");
+        if (debug) {
+          System.out.println(client + ": Timeout...resending buffer");
+        }
         sentTime = System.currentTimeMillis();
         transmit(resendBuffer);
       }

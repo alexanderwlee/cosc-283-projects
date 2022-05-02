@@ -1,6 +1,7 @@
 // =============================================================================
 // IMPORTS
 
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.Random;
 // =============================================================================
@@ -39,7 +40,18 @@ public class RandomNetworkLayer extends NetworkLayer {
   protected byte[] createPacket(int destination, byte[] data) {
 
     // COMPLETE ME
-
+    byte[] packet = new byte[bytesPerHeader + data.length];
+    byte[] packetLengthBytes = intToBytes(packet.length);
+    byte[] sourceBytes = intToBytes(address);
+    byte[] destinationBytes = intToBytes(destination);
+    copyInto(packet, lengthOffset, packetLengthBytes);
+    copyInto(packet, sourceOffset, sourceBytes);
+    copyInto(packet, destinationOffset, destinationBytes);
+    copyInto(packet, bytesPerHeader, data);
+    if (debug) {
+      System.out.println("createPacket: " + bytesToString(packet));
+    }
+    return packet;
   } // createPacket ()
   // =========================================================================
 
@@ -52,7 +64,16 @@ public class RandomNetworkLayer extends NetworkLayer {
   protected DataLinkLayer route(int destination) {
 
     // COMPLETE ME
-
+    int index = random.nextInt(dataLinkLayers.size());
+    Iterator<DataLinkLayer> it = dataLinkLayers.values().iterator();
+    for (int i = 0; i < index; i++) {
+      it.next();
+    }
+    DataLinkLayer dataLink = it.next();
+    if (debug) {
+      System.out.println("route: " + dataLink);
+    }
+    return dataLink;
   } // route ()
   // =========================================================================
 
@@ -68,7 +89,26 @@ public class RandomNetworkLayer extends NetworkLayer {
   protected byte[] extractPacket(Queue<Byte> buffer) {
 
     // COMPLETE ME
+    if (buffer.size() >= bytesPerHeader) {
+      byte[] packetLengthBytes = new byte[Integer.BYTES];
+      Iterator<Byte> it = buffer.iterator();
+      for (int i = lengthOffset; i < sourceOffset; i++) {
+        packetLengthBytes[i] = it.next();
+      }
+      int packetLength = bytesToInt(packetLengthBytes);
 
+      if (buffer.size() >= packetLength) {
+        byte[] packet = new byte[packetLength];
+        for (int i = 0; i < packetLength; i++) {
+          packet[i] = buffer.remove();
+        }
+        if (debug) {
+          System.out.println("extractPacket: " + bytesToString(packet));
+        }
+        return packet;
+      }
+    }
+    return null;
   } // extractPacket ()
   // =========================================================================
 
@@ -84,7 +124,15 @@ public class RandomNetworkLayer extends NetworkLayer {
   protected void processPacket(byte[] packet) {
 
     // COMPLETE ME
-
+    byte[] destinationBytes = new byte[Integer.BYTES];
+    copyFrom(destinationBytes, packet, destinationOffset);
+    int destination = bytesToInt(destinationBytes);
+    if (destination == address) {
+      client.receive(packet);
+    } else {
+      DataLinkLayer dataLink = route(destination);
+      dataLink.send(packet);
+    }
   } // processPacket ()
   // =========================================================================
 
@@ -111,7 +159,7 @@ public class RandomNetworkLayer extends NetworkLayer {
   public static final int bytesPerHeader = destinationOffset + Integer.BYTES;
 
   /** Whether to emit debugging information. */
-  public static final boolean debug = false;
+  public static final boolean debug = true;
   // =========================================================================
 
   // =============================================================================

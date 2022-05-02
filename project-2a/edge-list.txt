@@ -1,2 +1,5 @@
-A B 20
-B C 20
+Earth Mars 20
+Earth Venus 15
+Venus Mercury 7
+Mars Jupiter 12
+Earth Jupiter 55

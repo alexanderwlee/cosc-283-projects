@@ -64,6 +64,7 @@ public class Simulator {
 
     // Perform the simulation!
     simulate(hosts, sourceHost, destinationHost, dataToTransmit);
+    System.exit(0);
   } // main
   // =========================================================================
 
@@ -235,7 +236,7 @@ public class Simulator {
   // CLASS DATA MEMBERS
 
   /** Whether to emit debugging information. */
-  public static final boolean debug = false;
+  public static final boolean debug = true;
   // =========================================================================
 
   // =============================================================================

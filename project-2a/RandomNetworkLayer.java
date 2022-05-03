@@ -49,7 +49,7 @@ public class RandomNetworkLayer extends NetworkLayer {
     copyInto(packet, destinationOffset, destinationBytes);
     copyInto(packet, bytesPerHeader, data);
     if (debug) {
-      System.out.println("createPacket: " + bytesToString(packet));
+      System.out.println("RandomNetworkLayer.createPacket(): " + bytesToString(packet));
     }
     return packet;
   } // createPacket ()
@@ -71,7 +71,7 @@ public class RandomNetworkLayer extends NetworkLayer {
     }
     DataLinkLayer dataLink = it.next();
     if (debug) {
-      System.out.println("route: " + dataLink);
+      System.out.println("RandomNetworkLayer.route(): " + dataLink);
     }
     return dataLink;
   } // route ()
@@ -103,7 +103,7 @@ public class RandomNetworkLayer extends NetworkLayer {
           packet[i] = buffer.remove();
         }
         if (debug) {
-          System.out.println("extractPacket: " + bytesToString(packet));
+          System.out.println("RandomNetworkLayer.extractPacket(): " + bytesToString(packet));
         }
         return packet;
       }
@@ -128,7 +128,12 @@ public class RandomNetworkLayer extends NetworkLayer {
     copyFrom(destinationBytes, packet, destinationOffset);
     int destination = bytesToInt(destinationBytes);
     if (destination == address) {
-      client.receive(packet);
+      byte[] data = new byte[packet.length - bytesPerHeader];
+      copyFrom(data, packet, bytesPerHeader);
+      if (debug) {
+        System.out.println("RandomNetworkLayer.processPacket(): " + bytesToString(data));
+      }
+      client.receive(data);
     } else {
       DataLinkLayer dataLink = route(destination);
       dataLink.send(packet);

@@ -164,7 +164,7 @@ public class RandomNetworkLayer extends NetworkLayer {
   public static final int bytesPerHeader = destinationOffset + Integer.BYTES;
 
   /** Whether to emit debugging information. */
-  public static final boolean debug = true;
+  public static final boolean debug = false;
   // =========================================================================
 
   // =============================================================================

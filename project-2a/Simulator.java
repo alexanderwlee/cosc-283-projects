@@ -236,7 +236,7 @@ public class Simulator {
   // CLASS DATA MEMBERS
 
   /** Whether to emit debugging information. */
-  public static final boolean debug = true;
+  public static final boolean debug = false;
   // =========================================================================
 
   // =============================================================================

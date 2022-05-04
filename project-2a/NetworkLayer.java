@@ -352,7 +352,11 @@ public abstract class NetworkLayer {
       throw new RuntimeException("Invalid data array to convert to bytes");
     }
 
-    return (int) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
+    return (int)
+        ((data[0] & 0xff) << 24
+            | (data[1] & 0xff) << 16
+            | (data[2] & 0xff) << 8
+            | (data[3] & 0xff));
   } // bytesToInt ()
   // =========================================================================
 
